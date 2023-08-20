@@ -12,5 +12,5 @@ int main() {
         fmt::print("{}\n", err.what());
     }
 
-    return UINT64_MAX;
+    return BESTIE;
 }

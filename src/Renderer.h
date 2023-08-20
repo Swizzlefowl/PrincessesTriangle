@@ -1,14 +1,11 @@
-#pragma once
-#include <GLFW/glfw3.h>
 #include <fmt/core.h>
 #include <iostream>
 #include <vector>
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
-
-VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pCallback);
-
-void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT callback, const VkAllocationCallbacks *pAllocator);
+// remember to include glfw after vulkan and DONT remove the comment
+#include <GLFW/glfw3.h>
+#include <memory>
 
 struct Window {
     GLFWwindow *window{nullptr};
@@ -18,8 +15,49 @@ struct Window {
 
     const std::vector<const char *> getRequiredVkExtensions() const;
 
+    vk::raii::SurfaceKHR attachSurface(vk::raii::Instance &instance);
+
+    std::pair<int, int> getFrameBufferSize() const;
+
     int shouldClose() const;
 };
+
+#define BESTIE UINT64_MAX
+
+struct Swapchain {
+    struct SwapChainCapablities {
+        vk::SurfaceCapabilitiesKHR capabilities;
+        std::vector<vk::SurfaceFormatKHR> formats;
+        std::vector<vk::PresentModeKHR> presentModes;
+
+        vk::SurfaceFormatKHR getSurfaceFormat();
+        vk::PresentModeKHR getPresentMode();
+        vk::Extent2D getExtend(Window &window);
+
+        SwapChainCapablities(vk::raii::PhysicalDevice &physicalDevice, vk::raii::SurfaceKHR &surface);
+        SwapChainCapablities() = default;
+    };
+
+    vk::SurfaceFormatKHR surfaceFormat{};
+    vk::PresentModeKHR presentMode{};
+    vk::Extent2D extend{};
+
+    SwapChainCapablities capabilities;
+
+    vk::raii::SurfaceKHR surface{nullptr};
+    vk::raii::SwapchainKHR swapchain{nullptr};
+    std::vector<vk::raii::Image> image{};
+    std::vector<vk::raii::ImageView> imageviews{};
+
+    Swapchain(Window &window, vk::raii::Instance &instance, vk::raii::Device &device, vk::raii::PhysicalDevice &physicalDevice);
+    ~Swapchain() = default;
+
+    void createSwapChain(const vk::raii::Device &device);
+};
+
+VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pCallback);
+
+void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT callback, const VkAllocationCallbacks *pAllocator);
 
 struct Renderer {
     constexpr static std::array<const char *, 1> validationLayers{"VK_LAYER_KHRONOS_validation"};
@@ -36,14 +74,17 @@ struct Renderer {
     // Interface to the vulkan driver
     vk::raii::Instance instance{nullptr};
 
-    // A unified interface to the device
+    // A unified interface to the physicalDevice
+    vk::raii::PhysicalDevice physicalDevice{nullptr};
     vk::raii::Device device{nullptr};
+    vk::raii::Queue queue{nullptr};
+
+    std::unique_ptr<Swapchain> swapchain{nullptr};
 
     Renderer();
     ~Renderer();
 
     void run();
-
     void initVulkan();
     void createInstance();
     const vk::raii::PhysicalDevice pickPhysicalDevice() const;

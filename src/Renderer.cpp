@@ -26,6 +26,20 @@ const std::vector<const char *> Window::getRequiredVkExtensions() const {
     return extensions;
 }
 
+vk::raii::SurfaceKHR Window::attachSurface(vk::raii::Instance &instance) {
+    VkSurfaceKHR c_surface{};
+    if (glfwCreateWindowSurface(*instance, this->window, nullptr, &c_surface) != VK_SUCCESS) {
+        yeet("no window surafacers...");
+    }
+    return vk::raii::SurfaceKHR{instance, c_surface};
+}
+
+std::pair<int, int> Window::getFrameBufferSize() const {
+    int width, height;
+    glfwGetFramebufferSize(this->window, &width, &height);
+    return {width, height};
+}
+
 Renderer::Renderer() {}
 
 Renderer::~Renderer() {
@@ -36,6 +50,7 @@ void Renderer::initVulkan() {
     createInstance();
     setupDebugCallback();
     createLogicalDevice();
+    swapchain = std::make_unique<Swapchain>(this->window, this->instance, this->device, this->physicalDevice);
 }
 
 void Renderer::mainLoop() {
@@ -45,7 +60,6 @@ void Renderer::mainLoop() {
 }
 
 void Renderer::run() {
-    yeet("h1ello");
     initVulkan();
     mainLoop();
 }
@@ -70,7 +84,7 @@ void Renderer::createInstance() {
     instanceInfo.ppEnabledLayerNames = Renderer::validationLayers.data();
 
     instance = context.createInstance(instanceInfo);
-    yeet("no chance betch");
+    // yeet("no chance betch");
 }
 
 const vk::raii::PhysicalDevice Renderer::pickPhysicalDevice() const {
@@ -84,7 +98,7 @@ const vk::raii::PhysicalDevice Renderer::pickPhysicalDevice() const {
 }
 
 void Renderer::createLogicalDevice() {
-    const auto physicalDevice{pickPhysicalDevice()};
+    physicalDevice = pickPhysicalDevice();
     bool queueInitialized{false};
     uint32_t queueIndex{0};
 
@@ -124,6 +138,7 @@ void Renderer::createLogicalDevice() {
     deviceInfo.pEnabledFeatures = &deviceFeatures;
 
     device = physicalDevice.createDevice(deviceInfo);
+    queue = device.getQueue(queueIndex, 0);
 };
 
 /*
@@ -160,4 +175,84 @@ void Renderer::setupDebugCallback() {
 VKAPI_ATTR VkBool32 VKAPI_CALL Renderer::debugCallback(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity, VkDebugUtilsMessageTypeFlagsEXT messageType, const VkDebugUtilsMessengerCallbackDataEXT *pCallbackData, void *pUserData) {
     std::cerr << "validation layer: " << pCallbackData->pMessage << std::endl;
     return VK_FALSE;
+}
+
+Swapchain::Swapchain(Window &window, vk::raii::Instance &instance, vk::raii::Device &device, vk::raii::PhysicalDevice &physicalDevice) {
+    surface = window.attachSurface(instance);
+
+    capabilities = SwapChainCapablities(physicalDevice, surface);
+    extend = capabilities.getExtend(window);
+    surfaceFormat = capabilities.getSurfaceFormat();
+    // ask ken to finally go to his fucking job god damn freeloader deliver the mail bucko
+    presentMode = capabilities.getPresentMode();
+
+    createSwapChain(device);
+}
+
+void Swapchain::createSwapChain(const vk::raii::Device &device) {
+    vk::SwapchainCreateInfoKHR createInfo{};
+    createInfo.imageExtent = extend;
+    createInfo.imageFormat = surfaceFormat.format;
+    createInfo.imageColorSpace = surfaceFormat.colorSpace;
+    createInfo.presentMode = presentMode;
+
+    uint32_t imageCount{capabilities.capabilities.minImageCount + 1};
+    if (capabilities.capabilities.maxImageCount > 0 && imageCount > capabilities.capabilities.maxImageCount)
+        imageCount = capabilities.capabilities.maxImageCount;
+    createInfo.minImageCount = imageCount;
+    createInfo.preTransform = capabilities.capabilities.currentTransform;
+
+    createInfo.imageUsage = vk::ImageUsageFlagBits::eColorAttachment;
+    createInfo.imageSharingMode = vk::SharingMode::eExclusive;
+    createInfo.compositeAlpha = vk::CompositeAlphaFlagBitsKHR::eOpaque;
+    createInfo.imageArrayLayers = 1; // 1D array
+    createInfo.clipped = true;
+
+    createInfo.queueFamilyIndexCount = 0;
+    createInfo.pQueueFamilyIndices = nullptr;
+
+    createInfo.oldSwapchain = nullptr;
+    createInfo.surface = *surface;
+
+    swapchain = device.createSwapchainKHR(createInfo);
+    std::cout << "hello  gamers";
+}
+
+vk::SurfaceFormatKHR Swapchain::SwapChainCapablities::getSurfaceFormat() {
+    for (const auto &format : formats) {
+        if (format.format == vk::Format::eB8G8R8A8Srgb && format.colorSpace == vk::ColorSpaceKHR::eSrgbNonlinear) {
+            return format;
+        }
+    }
+    return formats[0];
+}
+
+vk::PresentModeKHR Swapchain::SwapChainCapablities::getPresentMode() {
+    for (const auto &ken : presentModes) {
+        if (ken == vk::PresentModeKHR::eMailbox) {
+            // my main man having another hard days of work babyyyyy
+            return ken;
+        }
+    }
+    return presentModes[0];
+}
+
+vk::Extent2D Swapchain::SwapChainCapablities::getExtend(Window &window) {
+    if (capabilities.currentExtent != std::numeric_limits<uint32_t>::max()) {
+        return capabilities.currentExtent;
+    } else {
+        const auto size = window.getFrameBufferSize();
+        vk::Extent2D actualExtent{static_cast<uint32_t>(size.first), static_cast<uint32_t>(size.second)};
+        actualExtent.width = std::clamp(actualExtent.width, capabilities.minImageExtent.width, capabilities.maxImageExtent.width);
+        actualExtent.height = std::clamp(actualExtent.height, capabilities.minImageExtent.height, capabilities.maxImageExtent.height);
+        return actualExtent;
+    }
+    yeet("aha bestiee");
+    return vk::Extent2D();
+}
+
+Swapchain::SwapChainCapablities::SwapChainCapablities(vk::raii::PhysicalDevice &device, vk::raii::SurfaceKHR &surface) {
+    capabilities = device.getSurfaceCapabilitiesKHR(*surface);
+    formats = device.getSurfaceFormatsKHR(*surface);
+    presentModes = device.getSurfacePresentModesKHR(*surface);
 }
