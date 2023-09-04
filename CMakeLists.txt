@@ -31,10 +31,10 @@ target_link_libraries(${MAIN_EXECUTABLE} PRIVATE Vulkan::Headers)
 add_subdirectory(Vulkan-Loader-sdk-1.3.250.1)
 target_link_libraries(${MAIN_EXECUTABLE} PRIVATE Vulkan::Vulkan)
 
-add_subdirectory(glm-0.9.9.8)
+add_subdirectory(./external/glm)
 target_link_libraries(${MAIN_EXECUTABLE} PRIVATE glm::glm)
 
-add_subdirectory(fmt-10.1.0)
+add_subdirectory(./external/fmt)
 target_link_libraries(${MAIN_EXECUTABLE} PRIVATE fmt::fmt)
 
 # Dont implicitly include OpenGL headers
