@@ -1,3 +1,8 @@
 build
 vs_sync.exe
 .vscode
+.cache
+.direnv
+.envrc
+.gdb_history
+result
