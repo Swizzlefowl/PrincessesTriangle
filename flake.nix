@@ -32,6 +32,7 @@
           xorg.libXcursor
           xorg.libXi
           xorg.libxcb
+          shaderc
           doxygen
         ];
       };

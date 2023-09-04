@@ -4,9 +4,10 @@
 #include <vulkan/vulkan.hpp>
 #include <vulkan/vulkan_raii.hpp>
 // remember to include glfw after vulkan and DONT remove the comment
+#include "window.h"
+#include "graphics.h"
 #include <GLFW/glfw3.h>
 #include <memory>
-#include "window.h"
 
 struct Swapchain {
     struct SwapChainCapablities {
@@ -30,13 +31,13 @@ struct Swapchain {
 
     vk::raii::SurfaceKHR surface{nullptr};
     vk::raii::SwapchainKHR swapchain{nullptr};
-    std::vector<vk::raii::Image> image{};
     std::vector<vk::raii::ImageView> imageviews{};
 
     Swapchain(Window &window, vk::raii::Instance &instance, vk::raii::Device &device, vk::raii::PhysicalDevice &physicalDevice);
     ~Swapchain() = default;
 
     void createSwapChain(const vk::raii::Device &device);
+    void createImageViews(const vk::raii::Device &device);
 };
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pCallback);
@@ -64,6 +65,7 @@ struct Renderer {
     vk::raii::Queue queue{nullptr};
 
     std::unique_ptr<Swapchain> swapchain{nullptr};
+    std::unique_ptr<Graphics> graphics{nullptr};
 
     Renderer();
     ~Renderer();

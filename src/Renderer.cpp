@@ -1,5 +1,9 @@
 #include "Renderer.h"
 #include "fmt/core.h"
+#include "vulkan/vulkan_raii.hpp"
+#include "vulkan/vulkan_structs.hpp"
+#include <memory>
+#include <utility>
 
 #define yeet(x) throw(std::runtime_error(x))
 
@@ -14,11 +18,11 @@ void Renderer::initVulkan() {
     setupDebugCallback();
     createLogicalDevice();
     swapchain = std::make_unique<Swapchain>(this->window, this->instance, this->device, this->physicalDevice);
+    graphics = std::make_unique<Graphics>(this->device, this->swapchain->surfaceFormat);
 }
 
 void Renderer::mainLoop() {
     while (!window.shouldClose()) {
-        fmt::println("hello");
         glfwPollEvents();
     }
 }
@@ -143,6 +147,7 @@ Swapchain::Swapchain(Window &window, vk::raii::Instance &instance, vk::raii::Dev
     presentMode = capabilities.getPresentMode();
 
     createSwapChain(device);
+    createImageViews(device);
 }
 
 void Swapchain::createSwapChain(const vk::raii::Device &device) {
@@ -211,4 +216,24 @@ Swapchain::SwapChainCapablities::SwapChainCapablities(vk::raii::PhysicalDevice &
     capabilities = device.getSurfaceCapabilitiesKHR(*surface);
     formats = device.getSurfaceFormatsKHR(*surface);
     presentModes = device.getSurfacePresentModesKHR(*surface);
+}
+
+void Swapchain::createImageViews(const vk::raii::Device& device) {
+    auto images = swapchain.getImages();
+    std::vector<vk::raii::ImageView> tempImageViews{};
+    for (auto &image : images) {
+        vk::ImageViewCreateInfo info{};
+        info.image = image;
+        info.format = surfaceFormat.format;
+        info.viewType = vk::ImageViewType::e2D;
+
+        // base	MipmapLevel = 0, levelcount = 1, baseArrayLayer = 0, layerCount
+        // =
+        // UINTKEN_MAX_SLAYYY
+        info.subresourceRange = {vk::ImageAspectFlagBits::eColor, 0, 1, 0, 1};
+        tempImageViews.push_back(device.createImageView(info));
+    }
+    // VERY IMPORTANT DO NOT REMOVE STD_MOVE_IF_NOEXCEPT
+    imageviews = std::move_if_noexcept(tempImageViews);
+    fmt::println("barbie is buliding all them images");
 }
