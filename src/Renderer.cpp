@@ -1,44 +1,7 @@
 #include "Renderer.h"
+#include "fmt/core.h"
 
-#define yeet(x) throw(std::exception(x))
-
-Window::Window(size_t width, size_t height) {
-    glfwInit();
-    glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-    glfwWindowHint(GLFW_RESIZABLE, GLFW_FALSE);
-    this->window = glfwCreateWindow(width, height, "Princess Aliance Vulaknner", nullptr, nullptr);
-}
-
-Window::~Window() {
-    glfwDestroyWindow(this->window);
-    glfwTerminate();
-}
-
-int Window::shouldClose() const {
-    return glfwWindowShouldClose(this->window);
-};
-
-const std::vector<const char *> Window::getRequiredVkExtensions() const {
-    uint32_t glfwExtensionCount = 0;
-    const char **glfwExtensions = glfwGetRequiredInstanceExtensions(&glfwExtensionCount);
-    std::vector<const char *> extensions(glfwExtensions, glfwExtensions + glfwExtensionCount);
-    extensions.push_back(VK_EXT_DEBUG_UTILS_EXTENSION_NAME);
-    return extensions;
-}
-
-vk::raii::SurfaceKHR Window::attachSurface(vk::raii::Instance &instance) {
-    VkSurfaceKHR c_surface{};
-    if (glfwCreateWindowSurface(*instance, this->window, nullptr, &c_surface) != VK_SUCCESS) {
-        yeet("no window surafacers...");
-    }
-    return vk::raii::SurfaceKHR{instance, c_surface};
-}
-
-std::pair<int, int> Window::getFrameBufferSize() const {
-    int width, height;
-    glfwGetFramebufferSize(this->window, &width, &height);
-    return {width, height};
-}
+#define yeet(x) throw(std::runtime_error(x))
 
 Renderer::Renderer() {}
 
@@ -55,6 +18,7 @@ void Renderer::initVulkan() {
 
 void Renderer::mainLoop() {
     while (!window.shouldClose()) {
+        fmt::println("hello");
         glfwPollEvents();
     }
 }
@@ -68,10 +32,10 @@ void Renderer::createInstance() {
     vk::ApplicationInfo appInfo{};
     appInfo.pApplicationName = "princess vulkanneers";
     appInfo.pEngineName = "delusional64";
-    appInfo.apiVersion = VK_MAKE_API_VERSION(1, 0, 0, 0);
+    appInfo.apiVersion = VK_API_VERSION_1_2;
 
     vk::InstanceCreateInfo instanceInfo{};
-    // instanceInfo.sType = vk::StructureType::eInstanceCreateInfo;
+    instanceInfo.sType = vk::StructureType::eInstanceCreateInfo;
     instanceInfo.pApplicationInfo = &appInfo;
 
     // Configure the extensions GLFW requires
@@ -82,9 +46,7 @@ void Renderer::createInstance() {
     // Configure the validation layers
     instanceInfo.enabledLayerCount = Renderer::validationLayers.size();
     instanceInfo.ppEnabledLayerNames = Renderer::validationLayers.data();
-
     instance = context.createInstance(instanceInfo);
-    // yeet("no chance betch");
 }
 
 const vk::raii::PhysicalDevice Renderer::pickPhysicalDevice() const {
@@ -94,7 +56,8 @@ const vk::raii::PhysicalDevice Renderer::pickPhysicalDevice() const {
         }
     }
 
-    throw("no physical device found");
+    fmt::println("no physical device found better be safe out there my friend");
+    return instance.enumeratePhysicalDevices()[0];
 }
 
 void Renderer::createLogicalDevice() {
@@ -112,7 +75,7 @@ void Renderer::createLogicalDevice() {
     }
 
     if (!queueInitialized) {
-        throw("no queues either bitch std::move_if_no_exfcept() get a better gpu");
+        yeet("no queues either bitch std::move_if_no_exfcept() get a better gpu");
     }
 
     // Configure our queue with the specified family
@@ -161,13 +124,6 @@ void DestroyDebugUtilsMessengerEXT(VkInstance instance, VkDebugUtilsMessengerEXT
 
 void Renderer::setupDebugCallback() {
     auto createInfo = vk::DebugUtilsMessengerCreateInfoEXT(vk::DebugUtilsMessengerCreateFlagsEXT(), vk::DebugUtilsMessageSeverityFlagBitsEXT::eVerbose | vk::DebugUtilsMessageSeverityFlagBitsEXT::eWarning | vk::DebugUtilsMessageSeverityFlagBitsEXT::eError, vk::DebugUtilsMessageTypeFlagBitsEXT::eGeneral | vk::DebugUtilsMessageTypeFlagBitsEXT::eValidation | vk::DebugUtilsMessageTypeFlagBitsEXT::ePerformance, debugCallback, nullptr);
-
-    // NOTE: Vulkan-hpp has methods for this, but they trigger linking errors...
-    // instance->createDebugUtilsMessengerEXT(createInfo);
-    // instance->createDebugUtilsMessengerEXTUnique(createInfo);
-
-    // NOTE: reinterpret_cast is also used by vulkan.hpp internally for all these
-    // structs
     if (CreateDebugUtilsMessengerEXT(*instance, reinterpret_cast<const VkDebugUtilsMessengerCreateInfoEXT *>(&createInfo), nullptr, &callback) != VK_SUCCESS)
         throw std::runtime_error("failed to set up debug callback!");
 }
@@ -215,7 +171,7 @@ void Swapchain::createSwapChain(const vk::raii::Device &device) {
     createInfo.surface = *surface;
 
     swapchain = device.createSwapchainKHR(createInfo);
-    std::cout << "hello  gamers";
+    fmt::println("created the swapchains gamerz");
 }
 
 vk::SurfaceFormatKHR Swapchain::SwapChainCapablities::getSurfaceFormat() {

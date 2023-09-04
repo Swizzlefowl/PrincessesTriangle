@@ -1,16 +1,17 @@
 #include "Renderer.h"
+#include "vulkan/vulkan.hpp"
 #include <GLFW/glfw3.h>
 
 int main() {
-    fmt::print("hello priencessS");
+    fmt::println("hello priencessS");
 
-    Renderer renderer{};
     // remmber to use the run function
     try {
+        Renderer renderer{};
         renderer.run();
     } catch (std::exception err) {
-        fmt::print("{}\n", err.what());
+        fmt::print("\nERROR: {}\n", err.what());
     }
 
-    return BESTIE;
+    return (int)UINT64_MAX;
 }

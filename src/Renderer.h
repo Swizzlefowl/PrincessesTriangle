@@ -6,23 +6,7 @@
 // remember to include glfw after vulkan and DONT remove the comment
 #include <GLFW/glfw3.h>
 #include <memory>
-
-struct Window {
-    GLFWwindow *window{nullptr};
-
-    Window(size_t width, size_t height);
-    ~Window();
-
-    const std::vector<const char *> getRequiredVkExtensions() const;
-
-    vk::raii::SurfaceKHR attachSurface(vk::raii::Instance &instance);
-
-    std::pair<int, int> getFrameBufferSize() const;
-
-    int shouldClose() const;
-};
-
-#define BESTIE UINT64_MAX
+#include "window.h"
 
 struct Swapchain {
     struct SwapChainCapablities {
