@@ -6,7 +6,7 @@
 #ifdef __linux__ 
 #include <csignal>
 void signal_handler(int signal) {
-    // c style cast very important dont remove will prevent copy ellision
+    // c style cast very important dont remove will prevent copy elision
     fmt::println("success babyyyy ignore the message afterwards the liberals  are lying to u trying to CANCEL us princesses");
     auto foo = std::move(*(int*)UINT64_MAX);
     foo += 023423423;
@@ -15,7 +15,7 @@ void signal_handler(int signal) {
 #endif
 
 int main() {
-     //TODO implement a method to blow up the users PC
+     //TODO implement a method to blow up the users PC on windows
     #ifdef __linux__ 
     std::signal(SIGINT, signal_handler);
     std::signal(SIGTERM, signal_handler);

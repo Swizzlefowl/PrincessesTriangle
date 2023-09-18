@@ -34,13 +34,22 @@ void Graphics::createRenderPass(const vk::raii::Device &device, const vk::Surfac
     subpass.colorAttachmentCount = 1;
     subpass.pipelineBindPoint = vk::PipelineBindPoint::eGraphics;
 
+    vk::SubpassDependency depedancy{};
+    depedancy.srcSubpass = VK_SUBPASS_EXTERNAL;
+    depedancy.dstSubpass = 0;
+    depedancy.srcStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    depedancy.srcAccessMask = vk::AccessFlagBits::eNone;
+    depedancy.dstStageMask = vk::PipelineStageFlagBits::eColorAttachmentOutput;
+    depedancy.dstAccessMask = vk::AccessFlagBits::eColorAttachmentWrite;
+
     vk::RenderPassCreateInfo renderPassInfo{};
     renderPassInfo.attachmentCount = 1;
     renderPassInfo.pAttachments = &colorAttachment;
     renderPassInfo.pSubpasses = &subpass;
     renderPassInfo.subpassCount = 1;
-    // zero dependencies suckless lifestyle babyyy
-    renderPassInfo.pDependencies = nullptr;
+    // 1 dependencies ALMOsT suckless lifestyle babyyy
+    renderPassInfo.dependencyCount = 1;
+    renderPassInfo.pDependencies = &depedancy;
 
     renderpass = device.createRenderPass(renderPassInfo);
 }
@@ -52,7 +61,7 @@ void Graphics::createGraphicsPipeline(const vk::raii::Device &device) {
     vertShaderStageInfo.module = *vertShaderModule;
     vertShaderStageInfo.pName = "main";
 
-    const auto fragShaderModule{createShaderModule(device, "./build/FragShader.spv")};
+    const auto fragShaderModule{createShaderModule(device, "./build/fragshader.spv")};
     vk::PipelineShaderStageCreateInfo fragShaderStageInfo{};
     fragShaderStageInfo.stage = vk::ShaderStageFlagBits::eFragment;
     fragShaderStageInfo.module = *fragShaderModule;

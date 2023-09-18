@@ -9,6 +9,8 @@
 #include <GLFW/glfw3.h>
 #include <memory>
 
+struct Resources;
+
 struct Swapchain {
     struct SwapChainCapablities {
         vk::SurfaceCapabilitiesKHR capabilities;
@@ -38,6 +40,7 @@ struct Swapchain {
 
     void createSwapChain(const vk::raii::Device &device);
     void createImageViews(const vk::raii::Device &device);
+
 };
 
 VkResult CreateDebugUtilsMessengerEXT(VkInstance instance, const VkDebugUtilsMessengerCreateInfoEXT *pCreateInfo, const VkAllocationCallbacks *pAllocator, VkDebugUtilsMessengerEXT *pCallback);
@@ -66,6 +69,7 @@ struct Renderer {
 
     std::unique_ptr<Swapchain> swapchain{nullptr};
     std::unique_ptr<Graphics> graphics{nullptr};
+    std::unique_ptr<Resources> resources{nullptr};
 
     Renderer();
     ~Renderer();
@@ -76,6 +80,9 @@ struct Renderer {
     const vk::raii::PhysicalDevice pickPhysicalDevice() const;
     void createLogicalDevice();
     void mainLoop();
+    void drawFrame();
+
+    void recordCommandBuffer(const vk::raii::Device &device, uint32_t imageIndex);
 
     // Validation layer callback
     void setupDebugCallback();

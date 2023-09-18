@@ -1,7 +1,11 @@
 #include "Renderer.h"
 #include "fmt/core.h"
+#include "resources.h"
+#include "vulkan/vulkan_enums.hpp"
+#include "vulkan/vulkan_handles.hpp"
 #include "vulkan/vulkan_raii.hpp"
 #include "vulkan/vulkan_structs.hpp"
+#include <cstdint>
 #include <memory>
 #include <utility>
 
@@ -19,11 +23,14 @@ void Renderer::initVulkan() {
     createLogicalDevice();
     swapchain = std::make_unique<Swapchain>(this->window, this->instance, this->device, this->physicalDevice);
     graphics = std::make_unique<Graphics>(this->device, this->swapchain->surfaceFormat);
+    resources = std::make_unique<Resources>(this->device, graphics->renderpass, *swapchain);
 }
 
 void Renderer::mainLoop() {
     while (!window.shouldClose()) {
         glfwPollEvents();
+        drawFrame();
+        device.waitIdle();
     }
 }
 
@@ -218,7 +225,7 @@ Swapchain::SwapChainCapablities::SwapChainCapablities(vk::raii::PhysicalDevice &
     presentModes = device.getSurfacePresentModesKHR(*surface);
 }
 
-void Swapchain::createImageViews(const vk::raii::Device& device) {
+void Swapchain::createImageViews(const vk::raii::Device &device) {
     auto images = swapchain.getImages();
     std::vector<vk::raii::ImageView> tempImageViews{};
     for (auto &image : images) {
@@ -236,4 +243,81 @@ void Swapchain::createImageViews(const vk::raii::Device& device) {
     // VERY IMPORTANT DO NOT REMOVE STD_MOVE_IF_NOEXCEPT
     imageviews = std::move_if_noexcept(tempImageViews);
     fmt::println("barbie is buliding all them images");
+}
+
+void Renderer::recordCommandBuffer(const vk::raii::Device &device, uint32_t imageIndex) {
+    vk::CommandBufferBeginInfo beginInfo{};
+    resources->commandBuffers[0].begin(beginInfo);
+
+    vk::RenderPassBeginInfo renderPassInfo{};
+    renderPassInfo.renderPass = *graphics->renderpass;
+    renderPassInfo.framebuffer = *resources->frameBuffers[imageIndex];
+    renderPassInfo.renderArea.extent = swapchain->extend;
+    // renderPassInfo.renderArea.offset = vk::Offset2D{0, 0};
+    vk::ClearValue clearColor{{0.0f, 0.0f, 0.0f, 1.0f}};
+    renderPassInfo.clearValueCount = 1;
+    renderPassInfo.pClearValues = &clearColor;
+
+    resources->commandBuffers[0].beginRenderPass(renderPassInfo, vk::SubpassContents::eInline);
+    resources->commandBuffers[0].bindPipeline(vk::PipelineBindPoint::eGraphics, *graphics->pipeline);
+
+    vk::Viewport viewport{};
+    viewport.x = 0.0f;
+    viewport.y = 0.0f;
+    viewport.width = static_cast<float>(swapchain->extend.width);
+    viewport.height = static_cast<float>(swapchain->extend.height);
+    viewport.minDepth = 0.0f;
+    viewport.maxDepth = 1.0f;
+    resources->commandBuffers[0].setViewport(0, viewport);
+
+    vk::Rect2D scissor{};
+    // scissor.offset = vk::Offset2D{0, 0};
+    scissor.extent = swapchain->extend;
+    resources->commandBuffers[0].setScissor(0, scissor);
+
+    resources->commandBuffers[0].draw(7, 1, 0, 0);
+    resources->commandBuffers[0].endRenderPass();
+    resources->commandBuffers[0].end();
+}
+
+void Renderer::drawFrame() {
+    constexpr uint64_t Timeout{UINT64_MAX};
+    const auto result = device.waitForFences(*resources->inFlightFences, true, Timeout);
+    if (result != vk::Result::eSuccess) {
+        fmt::println("melvin please upload another minecraft banger");
+        fmt::println("haaaalo mensen en welkom terug bij een nieuwe aflevering van five nights at freddies ik ben melvin");
+        const int a = *(int *)(void *)UINT64_MAX;
+        fmt::println("{}", a);
+    }
+    device.resetFences(*resources->inFlightFences);
+    resources->commandBuffers[0].reset();
+    const auto imageIndex{swapchain->swapchain.acquireNextImage(Timeout, *resources->imageAvailableSemaphores, *resources->inFlightFences).second};
+
+    recordCommandBuffer(device, imageIndex);
+
+    vk::SubmitInfo submitInfo{};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = &*resources->imageAvailableSemaphores;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &*resources->commandBuffers[0];
+    vk::PipelineStageFlags waitStages{vk::PipelineStageFlagBits::eColorAttachmentOutput};
+    submitInfo.pWaitDstStageMask = &waitStages;
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = &*resources->finishedRenderingSemaphores;
+    queue.submit(submitInfo);
+
+    vk::PresentInfoKHR presentInfo{};
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &*resources->finishedRenderingSemaphores;
+    presentInfo.pImageIndices = &imageIndex;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &*swapchain->swapchain;
+
+    const auto presentResult = queue.presentKHR(presentInfo);
+    if (presentResult != vk::Result::eSuccess) {
+        fmt::println("melvin please upload another minecraft banger");
+        fmt::println("haaaalo mensen en welkom terug bij een nieuwe aflevering van five nights at freddies ik ben melvin");
+        const int a = *(int *)(void *)UINT64_MAX;
+        fmt::println("{}", a);
+    }
 }

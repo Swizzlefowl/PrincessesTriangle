@@ -1,3 +1,7 @@
+# COMPILE SHADERS:
+# $ glslc ./src/shaders/VertShader.vert -o build/vertshader.spv
+# $ glslc ./src/shaders/FragShader.frag -o ./build/fragshader.spv
+
 cmake_minimum_required(VERSION 3.25)
 set(MAIN_EXECUTABLE "vulkan-raii")
 project(${MAIN_EXECUTABLE} LANGUAGES CXX)
